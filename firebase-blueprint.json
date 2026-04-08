@@ -1,0 +1,143 @@
+{
+  "entities": {
+    "employees": {
+      "title": "Employee",
+      "description": "Personnel records including salary and seniority data.",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "description": "Unique employee code" },
+        "name": { "type": "string", "description": "Full name" },
+        "sbc": { "type": "number", "description": "Salario Base de Cotización" },
+        "entryDate": { "type": "string", "format": "date", "description": "Employment start date" },
+        "birthDate": { "type": "string", "format": "date", "description": "Employee birth date" },
+        "shiftId": { "type": "string", "description": "Linked to ShiftDefinition" },
+        "workDays": { "type": "string", "enum": ["Lunes a Viernes", "Lunes a Sábado", "Personalizado"] },
+        "customWorkDays": { "type": "array", "items": { "type": "integer" } },
+        "paymentRegimen": { "type": "string", "enum": ["Por Hora", "Por Día", "Semanal", "Catorcenal", "Quincenal", "Mensual"] },
+        "vacationsTaken": { "type": "number", "description": "Total vacation days used" },
+        "permissionsHours": { "type": "number", "description": "Accumulated permission hours" },
+        "status": { "type": "string", "enum": ["active", "inactive"] }
+      },
+      "required": ["code", "name", "sbc", "entryDate", "birthDate", "shiftId", "workDays", "paymentRegimen", "status"]
+    },
+    "shifts": {
+      "title": "Shift Definition",
+      "description": "Configurable shift hours.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" },
+        "totalHours": { "type": "number" },
+        "isDefault": { "type": "boolean" }
+      },
+      "required": ["name", "startTime", "endTime", "totalHours"]
+    },
+    "incidences": {
+      "title": "Incidence Definition",
+      "description": "Configurable incidence types.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["positive", "negative", "neutral"] },
+        "affectsHours": { "type": "boolean" },
+        "isOvertime": { "type": "boolean" },
+        "isReposition": { "type": "boolean" }
+      },
+      "required": ["name", "type", "affectsHours"]
+    },
+    "vacationRequests": {
+      "title": "Vacation Request",
+      "description": "Scheduled vacations for employees.",
+      "type": "object",
+      "properties": {
+        "employeeId": { "type": "string" },
+        "startDate": { "type": "string", "format": "date" },
+        "endDate": { "type": "string", "format": "date" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] }
+      },
+      "required": ["employeeId", "startDate", "endDate", "status"]
+    },
+    "attendance": {
+      "title": "Attendance Record",
+      "description": "Daily clock-in/out records and calculations.",
+      "type": "object",
+      "properties": {
+        "employeeId": { "type": "string", "description": "Reference to employee" },
+        "date": { "type": "string", "format": "date" },
+        "checkIn": { "type": "string" },
+        "checkOut": { "type": "string" },
+        "hoursWorked": { "type": "number" },
+        "overtime": { "type": "number" },
+        "deficit": { "type": "number" },
+        "incidenceType": { "type": "string" },
+        "notes": { "type": "string" },
+        "isPending": { "type": "boolean" }
+      },
+      "required": ["employeeId", "date", "hoursWorked", "overtime", "deficit", "isPending"]
+    },
+    "isrTables": {
+      "title": "ISR Table",
+      "description": "Tax tables for payroll calculations.",
+      "type": "object",
+      "properties": {
+        "year": { "type": "integer" },
+        "type": { "type": "string", "enum": ["weekly", "biweekly", "semi-monthly", "monthly"] },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "lowerLimit": { "type": "number" },
+              "upperLimit": { "type": "number" },
+              "fixedFee": { "type": "number" },
+              "rate": { "type": "number" }
+            }
+          }
+        }
+      },
+      "required": ["year", "type", "rows"]
+    },
+    "holidays": {
+      "title": "Holiday",
+      "description": "Federal and company-specific holidays.",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "format": "date" },
+        "name": { "type": "string" },
+        "isFederal": { "type": "boolean" }
+      },
+      "required": ["date", "name", "isFederal"]
+    }
+  },
+  "firestore": {
+    "/employees": {
+      "schema": "employees",
+      "description": "Collection of employee records."
+    },
+    "/attendance": {
+      "schema": "attendance",
+      "description": "Collection of daily attendance records."
+    },
+    "/isrTables": {
+      "schema": "isrTables",
+      "description": "Collection of ISR tax tables."
+    },
+    "/holidays": {
+      "schema": "holidays",
+      "description": "Collection of holidays."
+    },
+    "/shifts": {
+      "schema": "shifts",
+      "description": "Collection of shift definitions."
+    },
+    "/incidences": {
+      "schema": "incidences",
+      "description": "Collection of incidence definitions."
+    },
+    "/vacationRequests": {
+      "schema": "vacationRequests",
+      "description": "Collection of vacation requests."
+    }
+  }
+}

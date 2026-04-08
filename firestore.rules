@@ -1,0 +1,200 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: employees
+    // Fields:
+    //   - code: string (required)
+    //   - name: string (required)
+    //   - sbc: number (required)
+    //   - entryDate: string (required)
+    //   - birthDate: string (required)
+    //   - shiftId: string (required)
+    //   - workDays: string (required)
+    //   - customWorkDays: list (optional)
+    //   - paymentRegimen: string (required)
+    //   - vacationsTaken: number (optional)
+    //   - permissionsHours: number (optional)
+    //   - status: string (required)
+    //
+    // Collection: attendance
+    // Fields:
+    //   - employeeId: string (required)
+    //   - date: string (required)
+    //   - checkIn: string (optional)
+    //   - checkOut: string (optional)
+    //   - hoursWorked: number (required)
+    //   - overtime: number (required)
+    //   - deficit: number (required)
+    //   - incidenceType: string (optional)
+    //   - notes: string (optional)
+    //   - isPending: bool (required)
+    //
+    // Collection: isrTables
+    // Fields:
+    //   - year: int (required)
+    //   - type: string (required)
+    //   - rows: list (required)
+    //
+    // Collection: holidays
+    // Fields:
+    //   - date: string (required)
+    //   - name: string (required)
+    //   - isFederal: bool (required)
+    //
+    // Collection: shifts
+    // Fields:
+    //   - name: string (required)
+    //   - startTime: string (required)
+    //   - endTime: string (required)
+    //   - totalHours: number (required)
+    //   - isDefault: bool (optional)
+    //
+    // Collection: incidences
+    // Fields:
+    //   - name: string (required)
+    //   - type: string (required)
+    //   - affectsHours: bool (required)
+    //   - isOvertime: bool (optional)
+    //   - isReposition: bool (optional)
+    //
+    // Collection: vacationRequests
+    // Fields:
+    //   - employeeId: string (required)
+    //   - startDate: string (required)
+    //   - endDate: string (required)
+    //   - status: string (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/appUsers/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "proyectosinterno@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidString(field, min, max) {
+      return request.resource.data[field] is string && 
+             request.resource.data[field].size() >= min && 
+             request.resource.data[field].size() <= max;
+    }
+
+    function isValidNumber(field, min) {
+      return request.resource.data[field] is number && request.resource.data[field] >= min;
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    function isValidEmployee(data) {
+      return data.keys().hasAll(['code', 'name', 'sbc', 'entryDate', 'birthDate', 'shiftId', 'workDays', 'paymentRegimen', 'status']) &&
+             data.code is string && data.code.size() > 0 && data.code.size() < 50 &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.sbc is number && data.sbc >= 0 &&
+             data.status in ['active', 'inactive'] &&
+             data.paymentRegimen in ['Por Hora', 'Por Día', 'Semanal', 'Catorcenal', 'Quincenal', 'Mensual'];
+    }
+
+    function isValidAttendance(data) {
+      return data.keys().hasAll(['employeeId', 'date', 'hoursWorked', 'overtime', 'deficit', 'isPending']) &&
+             data.employeeId is string &&
+             data.date is string &&
+             data.hoursWorked is number &&
+             data.overtime is number &&
+             data.deficit is number &&
+             data.isPending is bool;
+    }
+
+    function isValidShift(data) {
+      return data.keys().hasAll(['name', 'startTime', 'endTime', 'totalHours']) &&
+             data.name is string && data.name.size() > 0 &&
+             data.startTime is string &&
+             data.endTime is string &&
+             data.totalHours is number;
+    }
+
+    function isValidIncidence(data) {
+      return data.keys().hasAll(['name', 'type', 'affectsHours']) &&
+             data.name is string &&
+             data.type in ['positive', 'negative', 'neutral'] &&
+             data.affectsHours is bool;
+    }
+
+    function isValidVacationRequest(data) {
+      return data.keys().hasAll(['employeeId', 'startDate', 'endDate', 'status']) &&
+             data.employeeId is string &&
+             data.startDate is string &&
+             data.endDate is string &&
+             data.status in ['pending', 'approved', 'rejected'];
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+    match /appUsers/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+    }
+
+    match /employees/{employeeId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin() && isValidEmployee(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /attendance/{recordId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin() && isValidAttendance(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /isrTables/{tableId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /holidays/{holidayId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /shifts/{shiftId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin() && isValidShift(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /incidences/{incidenceId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin() && isValidIncidence(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /vacationRequests/{requestId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidVacationRequest(request.resource.data) && (request.resource.data.employeeId == request.auth.uid || isAdmin());
+      allow update: if isAuthenticated() && isValidVacationRequest(request.resource.data) && (resource.data.employeeId == request.auth.uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}
