@@ -5,7 +5,11 @@ import tsconfigPaths from "vite-tsconfig-paths";
 export default defineConfig({
   plugins: [
     remix({
-      ignoredRouteFiles: ["**/.*"],
+      future: {
+        v3_fetcherPersist: true,
+        v3_relativeRoutingPath: true,
+        v3_throwAbortReason: true,
+      },
     }),
     tsconfigPaths(),
   ],
